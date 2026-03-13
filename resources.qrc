@@ -1,0 +1,12 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+  <qresource prefix="/">
+    <file>app/ui/Main.qml</file>
+    <file>app/ui/Viewer.qml</file>
+    <file>app/ui/ControlPanel.qml</file>
+    <file>app/ui/MaskOverlay.qml</file>
+    <file>app/ui/FilmStrip.qml</file>
+    <file>app/ui/components/ASlider.qml</file>
+    <file>app/ui/components/ALabel.qml</file>
+  </qresource>
+</RCC>

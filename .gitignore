@@ -1,0 +1,22 @@
+# Build
+build/
+cmake-build-*/
+*.metallib
+*.air
+
+# Qt
+*.moc
+moc_*
+qmlcache/
+
+# ONNX models (too heavy for git - use Git LFS or separate download)
+models/*.onnx
+
+# macOS
+.DS_Store
+*.dSYM/
+
+# IDE
+.vscode/
+.idea/
+*.xcuserdata
