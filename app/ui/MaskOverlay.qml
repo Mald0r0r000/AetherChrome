@@ -127,9 +127,12 @@ Item {
          
         // Toggle mask mode button
         Button {
-            text: maskModeActive ? "Stop AI" : "Start AI"
-            width: 100
-            onClicked: maskModeActive = !maskModeActive
+            onClicked: {
+                maskModeActive = !maskModeActive
+                if (maskModeActive) {
+                    pipeline.prepareAI()
+                }
+            }
             background: Rectangle {
                 color: maskModeActive ? "#C8A96E" : "#1A1A1A"
                 radius: 4

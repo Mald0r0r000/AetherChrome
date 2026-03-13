@@ -28,30 +28,28 @@ Rectangle {
                     from: -5.0; to: 5.0
                     value: 0.0; stepSize: 0.01
                     Layout.fillWidth: true
-                    onValueChanged: (v) => { if (pipeline) pipeline.exposure = v }
+                    onValueChanged: { if (pipeline) pipeline.exposure = value }
                 }
                 ASlider {
                     label: "Contrast"
                     from: 0.5; to: 2.0
                     value: 1.0; stepSize: 0.01
                     Layout.fillWidth: true
-                    onValueChanged: (v) => { if (pipeline) pipeline.contrast = v }
+                    onValueChanged: { if (pipeline) pipeline.contrast = value }
                 }
                 ASlider {
                     label: "Highlights"
                     from: 0.0; to: 1.0
                     value: 0.0; stepSize: 0.01
                     Layout.fillWidth: true
-                    onValueChanged: (v) =>
-                        { if (pipeline) pipeline.highlightComp = v }
+                    onValueChanged: { if (pipeline) pipeline.highlightComp = value }
                 }
                 ASlider {
                     label: "Shadows"
                     from: 0.0; to: 0.5
                     value: 0.0; stepSize: 0.005
                     Layout.fillWidth: true
-                    onValueChanged: (v) =>
-                        { if (pipeline) pipeline.shadowLift = v }
+                    onValueChanged: { if (pipeline) pipeline.shadowLift = value }
                 }
             }
 
@@ -68,16 +66,14 @@ Rectangle {
                     from: 0.0; to: 2.0
                     value: 1.0; stepSize: 0.01
                     Layout.fillWidth: true
-                    onValueChanged: (v) =>
-                        { if (pipeline) pipeline.saturation = v }
+                    onValueChanged: { if (pipeline) pipeline.saturation = value }
                 }
                 ASlider {
                     label: "WB — Tungsten ← → Daylight"
                     from: 0.0; to: 1.0
                     value: 1.0; stepSize: 0.01
                     Layout.fillWidth: true
-                    onValueChanged: (v) =>
-                        { if (pipeline) pipeline.illuminantBlend = v }
+                    onValueChanged: { if (pipeline) pipeline.illuminantBlend = value }
                 }
             }
 

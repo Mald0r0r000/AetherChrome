@@ -102,13 +102,13 @@ CameraMetadata RawInputStage::extractMetadata() const {
         meta.lensModel = m_impl->libraw.imgdata.lens.Lens;
     }
 
-    // ── colorMatrix1 from rgb_cam (3×4 row-major → 3×3) ─────────────
-    // LibRaw's rgb_cam is a float[3][4] matrix mapping camera RGB to
-    // an internal colour space.  We extract the 3×3 sub-matrix.
+    // ── colorMatrix1 from cam_xyz (3×4 row-major → 3×3) ─────────────
+    // LibRaw's cam_xyz is a float[3][4] matrix mapping camera RGB to
+    // XYZ (calculated from DNG/EXIF). We extract the 3×3 sub-matrix.
     for (int r = 0; r < 3; ++r) {
         for (int c = 0; c < 3; ++c) {
             meta.colorMatrix1[static_cast<size_t>(r * 3 + c)] =
-                color.rgb_cam[r][c];
+                color.cam_xyz[r][c];
         }
     }
 

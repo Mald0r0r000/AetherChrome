@@ -58,22 +58,6 @@ void PipelineBridge::loadFile(const QString& path) {
                 emit cameraInfoChanged();
                 emit readyChanged();
  
-                if (m_aiController && m_aiController->isAvailable()) {
-                    if (!m_aiEncoding) {
-                        m_aiEncoding = true;
-                        emit aiEncodingChanged();
- 
-                        (void)QtConcurrent::run([this]() {
-                            m_aiController->prepareImageAsync();
-                            QMetaObject::invokeMethod(this, [this]() {
-                                m_aiEncoding = false;
-                                emit aiEncodingChanged();
-                                emit aiAvailableChanged();
-                            }, Qt::QueuedConnection);
-                        });
-                    }
-                }
- 
                 qDebug() << "[PipelineBridge] Requesting initial preview.";
                 requestPreview(m_previewW, m_previewH);
             } else {
@@ -142,6 +126,23 @@ void PipelineBridge::clearAIMasks() {
 
 const aether::ImageBuffer& PipelineBridge::lastPreviewBuffer() const noexcept {
     return m_lastPreview;
+}
+
+void PipelineBridge::prepareAI() {
+    if (!m_aiController || !m_aiController->isAvailable()) return;
+    if (m_aiEncoding) return;
+
+    m_aiEncoding = true;
+    emit aiEncodingChanged();
+
+    (void)QtConcurrent::run([this]() {
+        m_aiController->prepareImageAsync();
+        QMetaObject::invokeMethod(this, [this]() {
+            m_aiEncoding = false;
+            emit aiEncodingChanged();
+            emit aiAvailableChanged();
+        }, Qt::QueuedConnection);
+    });
 }
 
 // ─────────────────────────────────────────────────────────────────────

@@ -71,6 +71,7 @@ public:
     Q_INVOKABLE void segmentAtPoint(float normX, float normY, bool positive = true); // Added
     Q_INVOKABLE void segmentSubject(int subjectIndex); // Added
     Q_INVOKABLE void clearAIMasks(); // Added
+    Q_INVOKABLE void prepareAI();
     const aether::ImageBuffer& lastPreviewBuffer() const noexcept;
 
     // ── Getters ──────────────────────────────────────────────────────
