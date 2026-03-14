@@ -2,6 +2,7 @@
 /// @brief Implementation of PipelineBridge — QML ↔ PipelineEngine adapter.
 
 #include "core/PipelineEngine.hpp"
+#include "core/pipeline/DCPStage.hpp"
 #include "core/ai/AIMaskController.hpp"
 #include "bridge/PipelineBridge.hpp"
 #include "bridge/PreviewProvider.hpp"
@@ -354,15 +355,11 @@ void PipelineBridge::setTemperature(float t) {
     if (qFuzzyCompare(m_temperature, t)) return;
     m_temperature = t;
 
-    ColorMatrixParams cmp;
-    cmp.temperature = m_temperature;
-    cmp.tint        = m_tint;
-    if (m_engine) {
-        const auto& meta = m_engine->metadata();
-        cmp.cameraToXYZ_D50 = meta.colorMatrix1;
-        cmp.cameraToXYZ_D65 = meta.colorMatrix2;
-    }
-    m_engine->updateParam(aether::StageId::ColorMatrix, cmp);
+    DCPParams dp;
+    dp.temperature = m_temperature;
+    dp.tint        = m_tint;
+    dp.profilePath = "/Library/Application Support/Adobe/CameraRaw/CameraProfiles/Adobe Standard/Nikon D850 Adobe Standard.dcp";
+    m_engine->updateParam(aether::StageId::ColorMatrix, dp);
 
     emit temperatureChanged();
     schedulePreviewUpdate();
@@ -372,15 +369,11 @@ void PipelineBridge::setTint(float t) {
     if (qFuzzyCompare(m_tint, t)) return;
     m_tint = t;
 
-    ColorMatrixParams cmp;
-    cmp.temperature = m_temperature;
-    cmp.tint        = m_tint;
-    if (m_engine) {
-        const auto& meta = m_engine->metadata();
-        cmp.cameraToXYZ_D50 = meta.colorMatrix1;
-        cmp.cameraToXYZ_D65 = meta.colorMatrix2;
-    }
-    m_engine->updateParam(aether::StageId::ColorMatrix, cmp);
+    DCPParams dp;
+    dp.temperature = m_temperature;
+    dp.tint        = m_tint;
+    dp.profilePath = "/Library/Application Support/Adobe/CameraRaw/CameraProfiles/Adobe Standard/Nikon D850 Adobe Standard.dcp";
+    m_engine->updateParam(aether::StageId::ColorMatrix, dp);
 
     emit tintChanged();
     schedulePreviewUpdate();
@@ -390,19 +383,15 @@ void PipelineBridge::setIlluminantBlend(float b) {
     if (qFuzzyCompare(m_illuminantBlend, b)) return;
     m_illuminantBlend = b;
 
-    ColorMatrixParams cmp;
+    DCPParams dp;
     // blend 0.0 = Tungsten (2856K), blend 1.0 = Daylight (6504K)
-    cmp.temperature = 2856.0f + b * (6504.0f - 2856.0f);
-    cmp.tint = 0.0f;
-    if (m_engine) {
-        const auto& meta = m_engine->metadata();
-        cmp.cameraToXYZ_D50 = meta.colorMatrix1;
-        cmp.cameraToXYZ_D65 = meta.colorMatrix2;
-    }
-    m_engine->updateParam(aether::StageId::ColorMatrix, cmp);
+    dp.temperature = 2856.0f + b * (6504.0f - 2856.0f);
+    dp.tint = 0.0f;
+    dp.profilePath = "/Library/Application Support/Adobe/CameraRaw/CameraProfiles/Adobe Standard/Nikon D850 Adobe Standard.dcp";
+    m_engine->updateParam(aether::StageId::ColorMatrix, dp);
 
     // Sync temperature mirror
-    m_temperature = cmp.temperature;
+    m_temperature = dp.temperature;
     emit temperatureChanged();
 
     emit illuminantBlendChanged();

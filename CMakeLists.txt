@@ -106,6 +106,8 @@ set(CORE_SOURCES
     core/PipelineEngine.cpp
     core/pipeline/RawInputStage.cpp
     core/pipeline/ColorMatrixStage.cpp
+    core/pipeline/DCPStage.cpp
+    core/dcp/DCPProfile.cpp
     core/pipeline/ExposureStage.cpp
     core/pipeline/ToneMappingStage.cpp
     core/pipeline/OutputTransformStage.cpp

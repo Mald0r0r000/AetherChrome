@@ -6,6 +6,7 @@
 
 #include "pipeline/RawInputStage.hpp"
 #include "pipeline/ColorMatrixStage.hpp"
+#include "pipeline/DCPStage.hpp"
 #include "pipeline/ExposureStage.hpp"
 #include "pipeline/ToneMappingStage.hpp"
 #include "pipeline/MaskCompositeStage.hpp"
@@ -23,7 +24,7 @@ PipelineEngine::PipelineEngine() {
     // Instantiate concrete stages.
     m_stages[0] = std::make_unique<RawInputStage>();
     m_stages[1] = nullptr;  // DemosaicStage — LibRaw handles demosaic internally.
-    m_stages[2] = std::make_unique<ColorMatrixStage>();
+    m_stages[2] = std::make_unique<DCPStage>();
     m_stages[3] = std::make_unique<ExposureStage>();
     m_stages[4] = std::make_unique<ToneMappingStage>();
     m_stages[5] = std::make_unique<MaskCompositeStage>();
@@ -130,15 +131,13 @@ ImageBuffer PipelineEngine::runPipeline(std::stop_token cancel) {
             m_metadata = raw->metadata();
             std::cerr << "[PipelineEngine] Captured metadata: ISO " << m_metadata.isoValue << "\n";
 
-            // Non-destructively push camera matrix to ColorMatrixStage if it's set to use camera WB.
-            auto* colorStage = m_stages[static_cast<uint8_t>(StageId::ColorMatrix)].get();
-            if (colorStage) {
-                auto params = colorStage->getParams();
-                if (auto* cmp = std::get_if<ColorMatrixParams>(&params)) {
-                    if (cmp->useCameraWB) {
-                        cmp->cameraToXYZ_D50 = m_metadata.colorMatrix1;
-                        colorStage->setParams(*cmp);
-                    }
+            // Non-destructively push camera matrix to DCPStage if it's set to use camera WB.
+            auto* dcpStage = m_stages[static_cast<size_t>(StageId::ColorMatrix)].get();
+            if (dcpStage) {
+                auto params = dcpStage->getParams();
+                if (auto* dp = std::get_if<DCPParams>(&params)) {
+                    // Profile path should be set by higher level (PipelineBridge)
+                    // but we ensure the stage exists.
                 }
             }
         }

@@ -10,7 +10,12 @@ int main() {
     engine.loadRaw(nefPath);
     
     if (engine.isReady()) {
-        std::cout << "Engine ready, requesting preview..." << std::endl;
+        // Configure DCP Stage with hardcoded path for D850 Adobe Standard
+        aether::DCPParams dcp;
+        dcp.profilePath = "/Library/Application Support/Adobe/CameraRaw/CameraProfiles/Adobe Standard/Nikon D850 Adobe Standard.dcp";
+        engine.updateParam(aether::StageId::ColorMatrix, dcp);
+
+        std::cerr << "Engine ready, requesting preview..." << std::endl;
         std::stop_source ss;
         auto future = engine.requestPreview(1024, 768, ss.get_token());
         auto buffer = future.get();

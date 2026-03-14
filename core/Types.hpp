@@ -140,6 +140,14 @@ struct ColorMatrixParams {
     bool useCameraWB = true;
 };
 
+/// @brief Parameters for the DCP (Digital Camera Profile) stage.
+struct DCPParams {
+    std::string profilePath;
+    float temperature = 5000.0F; // Kelvin
+    float tint        = 0.0F;
+    bool  enableHueSatMap = true;
+};
+
 /// @brief Parameters for the Exposure stage.
 struct ExposureParams {
     float exposureEV    =  0.0F;  ///< EV compensation [-5, +5].
@@ -271,7 +279,8 @@ using StageParams = std::variant<
     ExposureParams,
     ToneMappingParams,
     OutputTransformParams,
-    MaskCompositeParams
+    MaskCompositeParams,
+    DCPParams
 >;
 
 } // namespace aether
