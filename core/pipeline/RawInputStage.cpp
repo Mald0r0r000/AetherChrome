@@ -199,6 +199,16 @@ ImageBuffer RawInputStage::process(const ImageBuffer& /* in */) {
         return {};
     }
 
+    // Capturer black/white après unpack, avant process.
+    // LibRaw peut effacer ou modifier color.black pendant dcraw_process.
+    const float capturedBlack = static_cast<float>(m_impl->libraw.imgdata.color.black);
+    const float capturedWhite = static_cast<float>(
+        m_impl->libraw.imgdata.color.maximum > 0 
+        ? m_impl->libraw.imgdata.color.maximum : 15983);
+
+    std::cerr << "[RawInputStage] Calibration after unpack: black=" << capturedBlack 
+              << " white=" << capturedWhite << "\n";
+
     // ── DCRaw Process ────────────────────────────────────────────────
     const int processErr = m_impl->libraw.dcraw_process();
     if (processErr != LIBRAW_SUCCESS) {
@@ -227,7 +237,7 @@ ImageBuffer RawInputStage::process(const ImageBuffer& /* in */) {
 
     // ── Extract camera metadata ──────────────────────────────────────
     m_impl->metadata = extractMetadata();
-    std::cout << "[RawInputStage] Metadata: ISO=" << m_impl->metadata.isoValue 
+    std::cout << "[RawInputStage] Metadata extracted: ISO=" << m_impl->metadata.isoValue 
               << " Shutter=" << m_impl->metadata.shutterSpeed 
               << " Aperture=" << m_impl->metadata.aperture << std::endl;
 
@@ -248,18 +258,15 @@ ImageBuffer RawInputStage::process(const ImageBuffer& /* in */) {
     buf.isLinear   = true;
 
     // img->data contains RGB interleaved 16-bit unsigned values.
-    // Normalise to [0, 1] float using black level subtraction.
     const auto* src = reinterpret_cast<const uint16_t*>(img->data);
     float*      dst = buf.ptr();
 
-    const float black = m_impl->metadata.blackLevel;
-    const float white = m_impl->metadata.whiteLevel;
-    const float range = (white > black) ? (white - black) : 65535.0f;
+    const float range = (capturedWhite > capturedBlack) ? (capturedWhite - capturedBlack) : 65535.0f;
     const float norm  = 1.0F / range;
 
     const size_t totalComponents = static_cast<size_t>(w) * h * 3;
     for (size_t i = 0; i < totalComponents; ++i) {
-        dst[i] = std::max(0.0F, static_cast<float>(src[i]) - black) * norm;
+        dst[i] = std::max(0.0F, static_cast<float>(src[i]) - capturedBlack) * norm;
     }
 
     // ── Clean up LibRaw allocated memory ─────────────────────────────

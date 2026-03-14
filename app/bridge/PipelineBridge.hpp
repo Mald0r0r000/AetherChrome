@@ -136,6 +136,7 @@ signals:
 private:
     void schedulePreviewUpdate();
     void triggerPreviewUpdate();
+    aether::DCPParams buildDCPParams() const;
 
     bool                    m_aiEncoding = false;
     std::unique_ptr<aether::PipelineEngine>   m_engine; // Changed to unique_ptr
@@ -162,4 +163,5 @@ private:
     float m_temperature     = 5000.0F;
     float m_tint            = 0.0F;
     float m_illuminantBlend = 0.5F;
+    QString m_dcpProfilePath;
 };

@@ -55,6 +55,24 @@ void PipelineBridge::loadFile(const QString& path) {
         QMetaObject::invokeMethod(this, [this]() {
             if (m_engine && m_engine->isReady()) {
                 qDebug() << "[PipelineBridge] Loader finished, engine is ready. Emitting signals.";
+                
+                // ── Construire le chemin DCP depuis les métadonnées ────────
+                const auto& meta = m_engine->metadata();
+                std::string make  = meta.cameraMake;
+                std::string model = meta.cameraModel;
+                while (!make.empty()  && (make.back()  == ' ' || make.back() == '\0')) make.pop_back();
+                while (!model.empty() && (model.back() == ' ' || model.back() == '\0')) model.pop_back();
+                
+                m_dcpProfilePath = QString::fromStdString(
+                    "/Library/Application Support/Adobe/CameraRaw/"
+                    "CameraProfiles/Camera/" + make + " " + model +
+                    "/" + make + " " + model + " Adobe Standard.dcp");
+                
+                qDebug() << "[PipelineBridge] DCP profile:" << m_dcpProfilePath;
+                
+                // Pousser les params DCP initiaux
+                m_engine->updateParam(aether::StageId::ColorMatrix, buildDCPParams());
+
                 clearAIMasks();
                 emit cameraInfoChanged();
                 emit readyChanged();
@@ -354,13 +372,7 @@ void PipelineBridge::setSigmoidSkew(float skew) {
 void PipelineBridge::setTemperature(float t) {
     if (qFuzzyCompare(m_temperature, t)) return;
     m_temperature = t;
-
-    DCPParams dp;
-    dp.temperature = m_temperature;
-    dp.tint        = m_tint;
-    dp.profilePath = "/Library/Application Support/Adobe/CameraRaw/CameraProfiles/Adobe Standard/Nikon D850 Adobe Standard.dcp";
-    m_engine->updateParam(aether::StageId::ColorMatrix, dp);
-
+    m_engine->updateParam(aether::StageId::ColorMatrix, buildDCPParams());
     emit temperatureChanged();
     schedulePreviewUpdate();
 }
@@ -368,13 +380,7 @@ void PipelineBridge::setTemperature(float t) {
 void PipelineBridge::setTint(float t) {
     if (qFuzzyCompare(m_tint, t)) return;
     m_tint = t;
-
-    DCPParams dp;
-    dp.temperature = m_temperature;
-    dp.tint        = m_tint;
-    dp.profilePath = "/Library/Application Support/Adobe/CameraRaw/CameraProfiles/Adobe Standard/Nikon D850 Adobe Standard.dcp";
-    m_engine->updateParam(aether::StageId::ColorMatrix, dp);
-
+    m_engine->updateParam(aether::StageId::ColorMatrix, buildDCPParams());
     emit tintChanged();
     schedulePreviewUpdate();
 }
@@ -382,20 +388,22 @@ void PipelineBridge::setTint(float t) {
 void PipelineBridge::setIlluminantBlend(float b) {
     if (qFuzzyCompare(m_illuminantBlend, b)) return;
     m_illuminantBlend = b;
-
-    DCPParams dp;
-    // blend 0.0 = Tungsten (2856K), blend 1.0 = Daylight (6504K)
-    dp.temperature = 2856.0f + b * (6504.0f - 2856.0f);
-    dp.tint = 0.0f;
-    dp.profilePath = "/Library/Application Support/Adobe/CameraRaw/CameraProfiles/Adobe Standard/Nikon D850 Adobe Standard.dcp";
-    m_engine->updateParam(aether::StageId::ColorMatrix, dp);
-
-    // Sync temperature mirror
-    m_temperature = dp.temperature;
-    emit temperatureChanged();
-
+    // Simple linear interpolate between A (2856K) and D65 (6504K)
+    m_temperature = 2856.0f + b * (6504.0f - 2856.0f);
+    m_engine->updateParam(aether::StageId::ColorMatrix, buildDCPParams());
+    
     emit illuminantBlendChanged();
+    emit temperatureChanged();
     schedulePreviewUpdate();
+}
+
+aether::DCPParams PipelineBridge::buildDCPParams() const {
+    aether::DCPParams dp;
+    dp.temperature = m_temperature;
+    dp.tint        = m_tint;
+    dp.profilePath = m_dcpProfilePath.toStdString();
+    dp.enableHueSatMap = true;
+    return dp;
 }
 
 // ─────────────────────────────────────────────────────────────────────

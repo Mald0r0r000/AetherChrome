@@ -49,7 +49,21 @@ static void hsvToRgb(float h, float s, float v, float& r, float& g, float& b) {
 
 ImageBuffer DCPStage::process(const ImageBuffer& in) {
     std::cerr << "[DCPStage] process() called. width=" << in.width << " profile=" << (m_profile.has_value() ? "YES" : "NO") << "\n";
-    if (!m_profile.has_value() || in.width == 0) return in;
+    if (in.width == 0) return in;
+
+    if (!m_profile.has_value()) {
+        // Pas de profil — conversion minimale LINEAR_RAW → PROPHOTO_LINEAR
+        // avec matrice identité pour ne pas bloquer le pipeline
+        std::cerr << "[DCPStage] No profile loaded — using identity matrix fallback\n";
+        auto outRes = ImageBuffer::create(in.width, in.height, ColorSpace::PROPHOTO_LINEAR);
+        if (!outRes) return in;
+        
+        ImageBuffer out = std::move(*outRes);
+        out.data = in.data;
+        out.whitePoint = WhitePoint::D50();
+        out.isLinear = true;
+        return out;
+    }
 
     // ProPhoto RGB (ROMM) standard: White point D50
     auto outRes = ImageBuffer::create(in.width, in.height, ColorSpace::PROPHOTO_LINEAR);

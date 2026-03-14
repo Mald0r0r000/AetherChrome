@@ -131,13 +131,35 @@ ImageBuffer PipelineEngine::runPipeline(std::stop_token cancel) {
             m_metadata = raw->metadata();
             std::cerr << "[PipelineEngine] Captured metadata: ISO " << m_metadata.isoValue << "\n";
 
-            // Non-destructively push camera matrix to DCPStage if it's set to use camera WB.
+            // ── Injecter le profil DCP par défaut ─────────────────────────
             auto* dcpStage = m_stages[static_cast<size_t>(StageId::ColorMatrix)].get();
             if (dcpStage) {
                 auto params = dcpStage->getParams();
                 if (auto* dp = std::get_if<DCPParams>(&params)) {
-                    // Profile path should be set by higher level (PipelineBridge)
-                    // but we ensure the stage exists.
+                    // Ne recharger que si pas déjà configuré (chemin vide)
+                    if (dp->profilePath.empty()) {
+                        DCPParams defaultDcp;
+                        // Construire le chemin depuis make + model
+                        std::string make  = m_metadata.cameraMake;
+                        std::string model = m_metadata.cameraModel;
+                        
+                        // Nettoyer les espaces superflus
+                        while (!make.empty() && (make.back() == ' ' || make.back() == '\0')) make.pop_back();
+                        while (!model.empty() && (model.back() == ' ' || model.back() == '\0')) model.pop_back();
+                        
+                        // Chemin standard Adobe sur macOS
+                        defaultDcp.profilePath = 
+                            "/Library/Application Support/Adobe/CameraRaw/"
+                            "CameraProfiles/Camera/" + make + " " + model + 
+                            "/" + make + " " + model + " Adobe Standard.dcp";
+                        
+                        defaultDcp.temperature = 5000.0F;
+                        defaultDcp.tint = 0.0F;
+                        defaultDcp.enableHueSatMap = true;
+                        
+                        std::cerr << "[PipelineEngine] Auto DCP path: " << defaultDcp.profilePath << "\n";
+                        dcpStage->setParams(defaultDcp);
+                    }
                 }
             }
         }
