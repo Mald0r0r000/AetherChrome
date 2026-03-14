@@ -156,7 +156,18 @@ struct ColorMatrixStage::Impl {
         // Standard DNG logic uses the specific illuminant temperatures:
         // StdA (approx 2856K) and D65 (6504K).
         float blend = std::clamp((params.temperature - 2856.0f) / (6504.0f - 2856.0f), 0.0f, 1.0f);
-        auto camToXYZ = lerpMatrix3x3(params.cameraToXYZ_D50, params.cameraToXYZ_D65, blend);
+        
+        bool hasMatrix2 = false;
+        for (float v : params.cameraToXYZ_D65) {
+            if (std::abs(v) > 1e-6f) {
+                hasMatrix2 = true;
+                break;
+            }
+        }
+
+        auto camToXYZ = hasMatrix2
+            ? lerpMatrix3x3(params.cameraToXYZ_D50, params.cameraToXYZ_D65, blend)
+            : params.cameraToXYZ_D50;
 
         // 3. Chromatic Adaptation: Source White -> Destination White (D50 for ProPhoto).
         auto cat = bradfordAdaptation(srcWp, WhitePoint::D50());

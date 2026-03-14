@@ -69,11 +69,19 @@ Rectangle {
                     onValueChanged: { if (pipeline) pipeline.saturation = value }
                 }
                 ASlider {
-                    label: "WB — Tungsten ← → Daylight"
-                    from: 0.0; to: 1.0
-                    value: 1.0; stepSize: 0.01
+                    label: "White Balance"
+                    from: 2000.0; to: 12000.0
+                    value: 5000.0; stepSize: 10
+                    suffix: " K"
                     Layout.fillWidth: true
-                    onValueChanged: { if (pipeline) pipeline.illuminantBlend = value }
+                    onValueChanged: { if (pipeline) pipeline.temperature = value }
+                }
+                ASlider {
+                    label: "Tint"
+                    from: -150.0; to: 150.0
+                    value: 0.0; stepSize: 1
+                    Layout.fillWidth: true
+                    onValueChanged: { if (pipeline) pipeline.tint = value }
                 }
             }
 
@@ -86,7 +94,7 @@ Rectangle {
                 spacing: 8
 
                 Repeater {
-                    model: ["Linear", "Filmic S", "ACES"]
+                    model: ["Linear", "Filmic S", "ACES", "Sigmoid"]
                     RadioButton {
                         text: modelData
                         checked: (pipeline && pipeline.toneOp) === index
@@ -102,6 +110,61 @@ Rectangle {
                             font.pixelSize: 12
                             verticalAlignment:
                                 Text.AlignVCenter
+                        }
+                        indicator: Rectangle {
+                            x: 4
+                            y: parent.height/2 - height/2
+                            width: 14; height: 14
+                            radius: 7
+                            color: "transparent"
+                            border.color: parent.checked
+                                ? "#C8A96E" : "#555555"
+                            border.width: 2
+                            Rectangle {
+                                anchors.centerIn: parent
+                                visible: parent.parent.checked
+                                width: 6; height: 6
+                                radius: 3
+                                color: "#C8A96E"
+                            }
+                        }
+                    }
+                }
+
+                ASlider {
+                    visible: pipeline && pipeline.toneOp === 3  // Sigmoid
+                    label: "Sigmoid Skew"
+                    from: -0.5; to: 0.5
+                    value: 0.0; stepSize: 0.01
+                    Layout.fillWidth: true
+                    onValueChanged: { if (pipeline) pipeline.sigmoidSkew = value }
+                }
+            }
+
+            // ── Section PRESERVATION NORM ──────────────────
+            SectionHeader { title: "PRESERVATION NORM" }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.margins: 16
+                spacing: 8
+
+                Repeater {
+                    model: ["None (RGB)", "MaxRGB", "Luminance", "PowerNorm"]
+                    RadioButton {
+                        text: modelData
+                        checked: (pipeline && pipeline.toneNorm) === index
+                        onCheckedChanged: {
+                            if (checked)
+                                pipeline.toneNorm = index
+                        }
+                        contentItem: Text {
+                            leftPadding: 24
+                            text: parent.text
+                            color: parent.checked
+                                   ? "#C8A96E" : "#888888"
+                            font.pixelSize: 12
+                            verticalAlignment: Text.AlignVCenter
                         }
                         indicator: Rectangle {
                             x: 4

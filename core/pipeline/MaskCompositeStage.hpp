@@ -37,6 +37,9 @@ public:
     /// @brief Accept `MaskCompositeParams`; silently ignores other types.
     void setParams(const StageParams& p) override;
 
+    /// @brief Retrieve current MaskCompositeParams.
+    [[nodiscard]] StageParams getParams() const override;
+
     /// @brief Returns `StageId::MaskComposite`.
     [[nodiscard]] StageId id() const noexcept override;
 

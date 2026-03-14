@@ -40,6 +40,9 @@ public:
     /// @brief Accept `ToneMappingParams`; silently ignores other types.
     void setParams(const StageParams& p) override;
 
+    /// @brief Retrieve current ToneMappingParams.
+    [[nodiscard]] StageParams getParams() const override;
+
     /// @brief Returns `StageId::ToneMapping`.
     [[nodiscard]] StageId id() const noexcept override;
 

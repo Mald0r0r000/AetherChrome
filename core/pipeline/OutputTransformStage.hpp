@@ -37,6 +37,9 @@ public:
     /// @brief Accept `OutputTransformParams`; silently ignores other types.
     void setParams(const StageParams& p) override;
 
+    /// @brief Retrieve current OutputTransformParams.
+    [[nodiscard]] StageParams getParams() const override;
+
     /// @brief Returns `StageId::OutputTransform`.
     [[nodiscard]] StageId id() const noexcept override;
 

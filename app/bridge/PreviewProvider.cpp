@@ -52,46 +52,12 @@ void PreviewProvider::updatePreview(const aether::ImageBuffer& buf) {
     // Convert float [0,1] RGB → uint8 RGB888.
     uint8_t* dst = img.bits();
 
-#if AETHER_HAS_NEON
-    const float32x4_t scale = vdupq_n_f32(255.0F);
-    const float32x4_t zero  = vdupq_n_f32(0.0F);
-    const float32x4_t one   = vdupq_n_f32(1.0F);
-
-    // Process 4 floats at a time (not aligned to pixels — just raw floats).
-    const size_t totalFloats = px * 3;
-    const size_t simdEnd     = (totalFloats / 4) * 4;
-    size_t fi = 0;
-
-    // We need a temp buffer for the uint8 conversion.
-    // Process in-place: convert 4 floats → 4 uint8s at a time.
-    for (; fi < simdEnd; fi += 4) {
-        float32x4_t v = vld1q_f32(src + fi);
-        v = vmaxq_f32(v, zero);
-        v = vminq_f32(v, one);
-        v = vmulq_f32(v, scale);
-
-        uint32x4_t  u32 = vcvtq_u32_f32(v);
-        uint16x4_t  u16 = vmovn_u32(u32);
-        uint8x8_t   u8  = vmovn_u16(vcombine_u16(u16, u16));
-
-        // Store only the first 4 bytes.
-        vst1_lane_u32(reinterpret_cast<uint32_t*>(dst + fi), vreinterpret_u32_u8(u8), 0);
-    }
-
-    for (; fi < totalFloats; ++fi) {
-        float v = std::clamp(src[fi], 0.0F, 1.0F);
-        // Simple Gamma 2.2 approximation: x^(1/2.2)
-        float gv = std::pow(v, 1.0F / 2.2F);
-        dst[fi] = static_cast<uint8_t>(gv * 255.0F + 0.5F);
-    }
-#else
     const size_t totalFloats = px * 3;
     for (size_t i = 0; i < totalFloats; ++i) {
         float v = std::clamp(src[i], 0.0F, 1.0F);
-        float gv = std::pow(v, 1.0F / 2.2F);
-        dst[i] = static_cast<uint8_t>(gv * 255.0F + 0.5F);
+        dst[i] = static_cast<uint8_t>(
+            std::pow(v, 1.0F / 2.2F) * 255.0F + 0.5F);
     }
-#endif
 
 
 

@@ -53,6 +53,9 @@ public:
     /// @brief Accept RawIngestParams; silently ignores other types.
     void setParams(const StageParams& p) override;
 
+    /// @brief Retrieve current RawIngestParams.
+    [[nodiscard]] StageParams getParams() const override;
+
     /// @brief Returns StageId::RawIngest.
     [[nodiscard]] StageId id() const noexcept override;
 

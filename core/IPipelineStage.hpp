@@ -30,9 +30,11 @@ public:
     /// @return    A new `ImageBuffer` containing the processed result.
     virtual ImageBuffer process(const ImageBuffer& in) = 0;
 
-    /// @brief Replace this stage's parameter block.
-    /// @param p  Serialised parameter variant.
+    /// @brief Update this stage's processing parameters.
     virtual void setParams(const StageParams& p) = 0;
+
+    /// @brief Retrieve the current parameter block of this stage.
+    [[nodiscard]] virtual StageParams getParams() const = 0;
 
     // ── Introspection ────────────────────────────────────────────────
 

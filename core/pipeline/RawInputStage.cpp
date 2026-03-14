@@ -93,6 +93,7 @@ CameraMetadata RawInputStage::extractMetadata() const {
     meta.cameraModel = idata.model;
     meta.isoValue    = other.iso_speed;
     meta.shutterSpeed = other.shutter;
+
     // Aperture — priority to CurAp from makernotes, fallback to standard aperture.
     if (m_impl->libraw.imgdata.lens.makernotes.CurAp > 0.1f) {
         meta.aperture = m_impl->libraw.imgdata.lens.makernotes.CurAp;
@@ -106,14 +107,12 @@ CameraMetadata RawInputStage::extractMetadata() const {
     }
 
     // ── colorMatrix1 from cam_xyz (3×4 row-major → 3×3) ─────────────
-    // LibRaw's cam_xyz is a float[3][4] matrix mapping camera RGB to
-    // XYZ (calculated from DNG/EXIF). We extract the 3×3 sub-matrix.
+    // LibRaw's cam_xyz is a float[4][3] matrix mapping XYZ to camera RGB.
+    // We need the inverse (camera RGB to XYZ) which is provided as part of the 
+    // cam_xyz array in a way that matches row-major 3x3 if accessed as [r][c].
     for (int r = 0; r < 3; ++r) {
         for (int c = 0; c < 3; ++c) {
-            // LibRaw cam_xyz is [input_channel][output_XYZ]
-            // We need [output_XYZ][input_channel] (row-major)
-            meta.colorMatrix1[static_cast<size_t>(r * 3 + c)] =
-                color.cam_xyz[c][r]; 
+            meta.colorMatrix1[static_cast<size_t>(r * 3 + c)] = color.cam_xyz[r][c];
         }
     }
 
@@ -122,14 +121,10 @@ CameraMetadata RawInputStage::extractMetadata() const {
     meta.colorMatrix2.fill(0.0F);
 
     // ── blackLevel & whiteLevel ──────────────────────────────────────
-    // LibRaw provides black as a float[4] array for CFA, we take average for now.
-    // metadata.blackLevel / whiteLevel are used to normalize [0, 1].
-    meta.blackLevel = (color.black + color.cblack[0] + color.cblack[1] + color.cblack[2] + color.cblack[3]) / 1.0f;
-    if (color.maximum > 0) {
-        meta.whiteLevel = static_cast<float>(color.maximum);
-    } else {
-        meta.whiteLevel = 65535.0f;
-    }
+    // LibRaw provides black as a baseline. Since we use output_color=0 
+    // and no auto-bright, we take the primary black level.
+    meta.blackLevel = static_cast<float>(color.black);
+    meta.whiteLevel = static_cast<float>(color.maximum > 0 ? color.maximum : 15983);
 
     // ── shotWhitePoint — approximate CIE xy from camera multipliers ──
     // cam_mul[0..2] are per-channel gain factors.  We treat them as a

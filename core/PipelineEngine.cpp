@@ -166,7 +166,17 @@ PipelineEngine::requestPreview(uint32_t w, uint32_t h,
             ImageBuffer full = runPipeline(cancel);
             if (full.width == 0) return {};
 
-            auto scaled = full.downscale(w, h);
+            // Respect aspect ratio
+            uint32_t targetW = w;
+            uint32_t targetH = h;
+            float srcRatio = static_cast<float>(full.width) / full.height;
+            float dstRatio = static_cast<float>(w) / h;
+            if (srcRatio > dstRatio)
+                targetH = static_cast<uint32_t>(w / srcRatio);
+            else
+                targetW = static_cast<uint32_t>(h * srcRatio);
+
+            auto scaled = full.downscale(targetW, targetH);
             return scaled.value_or(ImageBuffer{});
         });
 }

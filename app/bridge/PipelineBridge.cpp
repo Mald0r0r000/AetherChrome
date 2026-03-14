@@ -182,6 +182,7 @@ void PipelineBridge::requestPreview(int w, int h) {
 
         // Signal on the main thread.
         QMetaObject::invokeMethod(this, [this]() {
+            emit cameraInfoChanged();
             emit previewReady();
         }, Qt::QueuedConnection);
     });
@@ -206,7 +207,11 @@ float   PipelineBridge::highlightComp()   const { return m_highlightComp; }
 float   PipelineBridge::shadowLift()      const { return m_shadowLift; }
 float   PipelineBridge::saturation()      const { return m_saturation; }
 int     PipelineBridge::toneOp()          const { return m_toneOp; }
-float   PipelineBridge::illuminantBlend() const { return m_illuminantBlend; }
+int     PipelineBridge::toneNorm()        const { return m_toneNorm; }
+float   PipelineBridge::sigmoidSkew()     const { return m_sigmoidSkew; }
+float    PipelineBridge::temperature()     const { return m_temperature; }
+float    PipelineBridge::tint()            const { return m_tint; }
+float    PipelineBridge::illuminantBlend() const { return m_illuminantBlend; }
 
 QString PipelineBridge::cameraInfo() const {
     if (!m_engine || !m_engine->isReady()) return QStringLiteral("No file loaded");
@@ -242,9 +247,11 @@ void PipelineBridge::setContrast(float c) {
     m_contrast = c;
 
     ToneMappingParams tp;
-    tp.op        = static_cast<ToneMappingParams::Operator>(m_toneOp);
-    tp.contrast  = m_contrast;
-    tp.saturation = m_saturation;
+    tp.op          = static_cast<ToneMappingParams::Operator>(m_toneOp);
+    tp.norm        = static_cast<ToneMappingParams::PreservationNorm>(m_toneNorm);
+    tp.contrast    = m_contrast;
+    tp.saturation  = m_saturation;
+    tp.sigmoidSkew = m_sigmoidSkew;
     m_engine->updateParam(aether::StageId::ToneMapping, tp);
 
     emit contrastChanged();
@@ -284,9 +291,11 @@ void PipelineBridge::setSaturation(float s) {
     m_saturation = s;
 
     ToneMappingParams tp;
-    tp.op         = static_cast<ToneMappingParams::Operator>(m_toneOp);
-    tp.contrast   = m_contrast;
-    tp.saturation = m_saturation;
+    tp.op          = static_cast<ToneMappingParams::Operator>(m_toneOp);
+    tp.norm        = static_cast<ToneMappingParams::PreservationNorm>(m_toneNorm);
+    tp.contrast    = m_contrast;
+    tp.saturation  = m_saturation;
+    tp.sigmoidSkew = m_sigmoidSkew;
     m_engine->updateParam(aether::StageId::ToneMapping, tp);
 
     emit saturationChanged();
@@ -298,12 +307,82 @@ void PipelineBridge::setToneOp(int op) {
     m_toneOp = op;
 
     ToneMappingParams tp;
-    tp.op         = static_cast<ToneMappingParams::Operator>(m_toneOp);
-    tp.contrast   = m_contrast;
-    tp.saturation = m_saturation;
+    tp.op          = static_cast<ToneMappingParams::Operator>(m_toneOp);
+    tp.norm        = static_cast<ToneMappingParams::PreservationNorm>(m_toneNorm);
+    tp.contrast    = m_contrast;
+    tp.saturation  = m_saturation;
+    tp.sigmoidSkew = m_sigmoidSkew;
     m_engine->updateParam(aether::StageId::ToneMapping, tp);
 
     emit toneOpChanged();
+    schedulePreviewUpdate();
+}
+
+void PipelineBridge::setToneNorm(int norm) {
+    if (m_toneNorm == norm) return;
+    m_toneNorm = norm;
+
+    ToneMappingParams tp;
+    tp.op          = static_cast<ToneMappingParams::Operator>(m_toneOp);
+    tp.norm        = static_cast<ToneMappingParams::PreservationNorm>(m_toneNorm);
+    tp.contrast    = m_contrast;
+    tp.saturation  = m_saturation;
+    tp.sigmoidSkew = m_sigmoidSkew;
+    m_engine->updateParam(aether::StageId::ToneMapping, tp);
+
+    emit toneNormChanged();
+    schedulePreviewUpdate();
+}
+
+void PipelineBridge::setSigmoidSkew(float skew) {
+    if (qFuzzyCompare(m_sigmoidSkew, skew)) return;
+    m_sigmoidSkew = skew;
+
+    ToneMappingParams tp;
+    tp.op          = static_cast<ToneMappingParams::Operator>(m_toneOp);
+    tp.norm        = static_cast<ToneMappingParams::PreservationNorm>(m_toneNorm);
+    tp.contrast    = m_contrast;
+    tp.saturation  = m_saturation;
+    tp.sigmoidSkew = m_sigmoidSkew;
+    m_engine->updateParam(aether::StageId::ToneMapping, tp);
+
+    emit sigmoidSkewChanged();
+    schedulePreviewUpdate();
+}
+
+void PipelineBridge::setTemperature(float t) {
+    if (qFuzzyCompare(m_temperature, t)) return;
+    m_temperature = t;
+
+    ColorMatrixParams cmp;
+    cmp.temperature = m_temperature;
+    cmp.tint        = m_tint;
+    if (m_engine) {
+        const auto& meta = m_engine->metadata();
+        cmp.cameraToXYZ_D50 = meta.colorMatrix1;
+        cmp.cameraToXYZ_D65 = meta.colorMatrix2;
+    }
+    m_engine->updateParam(aether::StageId::ColorMatrix, cmp);
+
+    emit temperatureChanged();
+    schedulePreviewUpdate();
+}
+
+void PipelineBridge::setTint(float t) {
+    if (qFuzzyCompare(m_tint, t)) return;
+    m_tint = t;
+
+    ColorMatrixParams cmp;
+    cmp.temperature = m_temperature;
+    cmp.tint        = m_tint;
+    if (m_engine) {
+        const auto& meta = m_engine->metadata();
+        cmp.cameraToXYZ_D50 = meta.colorMatrix1;
+        cmp.cameraToXYZ_D65 = meta.colorMatrix2;
+    }
+    m_engine->updateParam(aether::StageId::ColorMatrix, cmp);
+
+    emit tintChanged();
     schedulePreviewUpdate();
 }
 
@@ -312,14 +391,19 @@ void PipelineBridge::setIlluminantBlend(float b) {
     m_illuminantBlend = b;
 
     ColorMatrixParams cmp;
-    cmp.illuminantBlend = m_illuminantBlend;
+    // blend 0.0 = Tungsten (2856K), blend 1.0 = Daylight (6504K)
+    cmp.temperature = 2856.0f + b * (6504.0f - 2856.0f);
+    cmp.tint = 0.0f;
     if (m_engine) {
         const auto& meta = m_engine->metadata();
         cmp.cameraToXYZ_D50 = meta.colorMatrix1;
-        cmp.cameraToXYZ_D65 = std::any_of(meta.colorMatrix2.begin(), meta.colorMatrix2.end(), [](float x){ return x != 0.0f; }) 
-                               ? meta.colorMatrix2 : meta.colorMatrix1;
+        cmp.cameraToXYZ_D65 = meta.colorMatrix2;
     }
     m_engine->updateParam(aether::StageId::ColorMatrix, cmp);
+
+    // Sync temperature mirror
+    m_temperature = cmp.temperature;
+    emit temperatureChanged();
 
     emit illuminantBlendChanged();
     schedulePreviewUpdate();

@@ -9,6 +9,7 @@ ColumnLayout {
     property real   to:     1.0
     property real   value:  0.0
     property real   stepSize: 0.01
+    property string suffix:   ""
 
 
 
@@ -23,7 +24,7 @@ ColumnLayout {
             Layout.fillWidth: true
         }
         Text {
-            text: root.value.toFixed(2)
+            text: (root.stepSize >= 1 ? root.value.toFixed(0) : root.value.toFixed(2)) + root.suffix
             color: "#E8E8E8"
             font.pixelSize: 11
             font.family: "Menlo"

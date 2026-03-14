@@ -44,6 +44,10 @@ void MaskCompositeStage::setParams(const StageParams& p) {
     }
 }
 
+StageParams MaskCompositeStage::getParams() const {
+    return m_params;
+}
+
 // ─────────────────────────────────────────────────────────────────────
 // Mask merging helpers
 // ─────────────────────────────────────────────────────────────────────

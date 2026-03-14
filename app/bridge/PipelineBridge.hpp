@@ -46,6 +46,14 @@ class PipelineBridge : public QObject {
                                                                NOTIFY saturationChanged)
     Q_PROPERTY(int     toneOp           READ toneOp            WRITE setToneOp
                                                                NOTIFY toneOpChanged)
+    Q_PROPERTY(int     toneNorm         READ toneNorm          WRITE setToneNorm
+                                                               NOTIFY toneNormChanged)
+    Q_PROPERTY(float   sigmoidSkew      READ sigmoidSkew       WRITE setSigmoidSkew
+                                                               NOTIFY sigmoidSkewChanged)
+    Q_PROPERTY(float   temperature      READ temperature       WRITE setTemperature
+                                                               NOTIFY temperatureChanged)
+    Q_PROPERTY(float   tint             READ tint              WRITE setTint
+                                                               NOTIFY tintChanged)
     Q_PROPERTY(float   illuminantBlend  READ illuminantBlend   WRITE setIlluminantBlend
                                                                NOTIFY illuminantBlendChanged)
     Q_PROPERTY(QString cameraInfo       READ cameraInfo        NOTIFY cameraInfoChanged) // Changed NOTIFY
@@ -85,6 +93,10 @@ public:
     [[nodiscard]] float   shadowLift()      const;
     [[nodiscard]] float   saturation()      const;
     [[nodiscard]] int     toneOp()          const;
+    [[nodiscard]] int     toneNorm()        const;
+    [[nodiscard]] float   sigmoidSkew()     const;
+    [[nodiscard]] float   temperature()     const;
+    [[nodiscard]] float   tint()            const;
     [[nodiscard]] float   illuminantBlend() const;
     [[nodiscard]] QString cameraInfo()      const;
 
@@ -96,6 +108,10 @@ public:
     void setShadowLift(float s);
     void setSaturation(float s);
     void setToneOp(int op);
+    void setToneNorm(int norm);
+    void setSigmoidSkew(float skew);
+    void setTemperature(float t);
+    void setTint(float t);
     void setIlluminantBlend(float b);
 
 signals:
@@ -106,6 +122,10 @@ signals:
     void shadowLiftChanged();
     void saturationChanged();
     void toneOpChanged();
+    void toneNormChanged();
+    void sigmoidSkewChanged();
+    void temperatureChanged();
+    void tintChanged();
     void illuminantBlendChanged();
     void previewReady();
     void cameraInfoChanged(); // Added
@@ -137,5 +157,9 @@ private:
     float m_blackPoint      = 0.0F;
     float m_saturation      = 1.0F;
     int   m_toneOp          = 1;     // FilmicS
-    float m_illuminantBlend = 0.5F;   // Mid-point default
+    int   m_toneNorm        = 0;     // None
+    float m_sigmoidSkew     = 0.0F;
+    float m_temperature     = 5000.0F;
+    float m_tint            = 0.0F;
+    float m_illuminantBlend = 0.5F;
 };

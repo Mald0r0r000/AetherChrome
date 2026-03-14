@@ -38,6 +38,9 @@ public:
     /// @brief Accept `ExposureParams`; silently ignores other types.
     void setParams(const StageParams& p) override;
 
+    /// @brief Retrieve current ExposureParams.
+    [[nodiscard]] StageParams getParams() const override;
+
     /// @brief Returns `StageId::Exposure`.
     [[nodiscard]] StageId id() const noexcept override;
 

@@ -48,6 +48,10 @@ void ExposureStage::setParams(const StageParams& p) {
     }
 }
 
+StageParams ExposureStage::getParams() const {
+    return m_params;
+}
+
 // ─────────────────────────────────────────────────────────────────────
 // buildLUT — tanh LUT for highlight recovery
 // ─────────────────────────────────────────────────────────────────────
