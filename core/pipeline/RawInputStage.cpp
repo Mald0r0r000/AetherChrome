@@ -57,7 +57,10 @@ void RawInputStage::setParams(const StageParams& p) {
     if (const auto* rip = std::get_if<RawIngestParams>(&p)) {
         m_impl->params = *rip;
     }
-    // Silently ignore unrelated types.
+}
+
+StageParams RawInputStage::getParams() const {
+    return m_impl->params;
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -107,14 +110,26 @@ CameraMetadata RawInputStage::extractMetadata() const {
     // XYZ (calculated from DNG/EXIF). We extract the 3×3 sub-matrix.
     for (int r = 0; r < 3; ++r) {
         for (int c = 0; c < 3; ++c) {
+            // LibRaw cam_xyz is [input_channel][output_XYZ]
+            // We need [output_XYZ][input_channel] (row-major)
             meta.colorMatrix1[static_cast<size_t>(r * 3 + c)] =
-                color.cam_xyz[r][c];
+                color.cam_xyz[c][r]; 
         }
     }
 
     // colorMatrix2 — not directly available from LibRaw at runtime;
     // leave zeroed (will be populated from DNG tags in a later stage).
     meta.colorMatrix2.fill(0.0F);
+
+    // ── blackLevel & whiteLevel ──────────────────────────────────────
+    // LibRaw provides black as a float[4] array for CFA, we take average for now.
+    // metadata.blackLevel / whiteLevel are used to normalize [0, 1].
+    meta.blackLevel = (color.black + color.cblack[0] + color.cblack[1] + color.cblack[2] + color.cblack[3]) / 1.0f;
+    if (color.maximum > 0) {
+        meta.whiteLevel = static_cast<float>(color.maximum);
+    } else {
+        meta.whiteLevel = 65535.0f;
+    }
 
     // ── shotWhitePoint — approximate CIE xy from camera multipliers ──
     // cam_mul[0..2] are per-channel gain factors.  We treat them as a
@@ -217,6 +232,9 @@ ImageBuffer RawInputStage::process(const ImageBuffer& /* in */) {
 
     // ── Extract camera metadata ──────────────────────────────────────
     m_impl->metadata = extractMetadata();
+    std::cout << "[RawInputStage] Metadata: ISO=" << m_impl->metadata.isoValue 
+              << " Shutter=" << m_impl->metadata.shutterSpeed 
+              << " Aperture=" << m_impl->metadata.aperture << std::endl;
 
     // ── Build the ImageBuffer ────────────────────────────────────────
     // Use the actual processed image dimensions (handles half-size correctly).
@@ -235,15 +253,18 @@ ImageBuffer RawInputStage::process(const ImageBuffer& /* in */) {
     buf.isLinear   = true;
 
     // img->data contains RGB interleaved 16-bit unsigned values.
-    // Normalise to [0, 1] float.
+    // Normalise to [0, 1] float using black level subtraction.
     const auto* src = reinterpret_cast<const uint16_t*>(img->data);
     float*      dst = buf.ptr();
 
-    constexpr float kNorm = 1.0F / 65535.0F;
+    const float black = m_impl->metadata.blackLevel;
+    const float white = m_impl->metadata.whiteLevel;
+    const float range = (white > black) ? (white - black) : 65535.0f;
+    const float norm  = 1.0F / range;
 
     const size_t totalComponents = static_cast<size_t>(w) * h * 3;
     for (size_t i = 0; i < totalComponents; ++i) {
-        dst[i] = static_cast<float>(src[i]) * kNorm;
+        dst[i] = std::max(0.0F, static_cast<float>(src[i]) - black) * norm;
     }
 
     // ── Clean up LibRaw allocated memory ─────────────────────────────

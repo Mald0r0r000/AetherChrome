@@ -130,13 +130,17 @@ ImageBuffer PipelineEngine::runPipeline(std::stop_token cancel) {
             m_metadata = raw->metadata();
             std::cerr << "[PipelineEngine] Captured metadata: ISO " << m_metadata.isoValue << "\n";
 
-            ColorMatrixParams cmp;
-            cmp.cameraToXYZ_D50 = m_metadata.colorMatrix1;
-            bool hasM2 = std::any_of(m_metadata.colorMatrix2.begin(), m_metadata.colorMatrix2.end(), [](float x){ return x != 0.0f; });
-            cmp.cameraToXYZ_D65 = hasM2 ? m_metadata.colorMatrix2 : m_metadata.colorMatrix1;
-            
-            // updateParam locks recursively, which is fine now.
-            updateParam(StageId::ColorMatrix, cmp);
+            // Non-destructively push camera matrix to ColorMatrixStage if it's set to use camera WB.
+            auto* colorStage = m_stages[static_cast<uint8_t>(StageId::ColorMatrix)].get();
+            if (colorStage) {
+                auto params = colorStage->getParams();
+                if (auto* cmp = std::get_if<ColorMatrixParams>(&params)) {
+                    if (cmp->useCameraWB) {
+                        cmp->cameraToXYZ_D50 = m_metadata.colorMatrix1;
+                        colorStage->setParams(*cmp);
+                    }
+                }
+            }
         }
     }
 

@@ -139,6 +139,10 @@ void OutputTransformStage::setParams(const StageParams& p) {
     }
 }
 
+StageParams OutputTransformStage::getParams() const {
+    return m_impl->params;
+}
+
 // ─────────────────────────────────────────────────────────────────────
 // Clamp helper
 // ─────────────────────────────────────────────────────────────────────

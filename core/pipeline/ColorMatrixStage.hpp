@@ -44,6 +44,9 @@ public:
     /// @brief Accept `ColorMatrixParams`; silently ignores other types.
     void setParams(const StageParams& p) override;
 
+    /// @brief Retrieve the current parameter block of this stage.
+    [[nodiscard]] StageParams getParams() const override;
+
     /// @brief Returns `StageId::ColorMatrix`.
     [[nodiscard]] StageId id() const noexcept override;
 

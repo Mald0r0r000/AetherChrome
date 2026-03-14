@@ -47,6 +47,18 @@ static float acesHill(float x, float contrast) noexcept {
         0.0F, 1.0F);
 }
 
+/// @brief Sigmoid curve (log-logistic variant).
+/// @param x Input scene-linear value.
+/// @param contrast Contrast / Slope.
+/// @param skew Skew / Pivot shift.
+static float sigmoidCurve(float x, float contrast, float skew) noexcept {
+    if (x <= 1e-6F) return 0.0F;
+    // Log-logistic Sigmoid: f(x) = 1 / (1 + (x/pivot)^-contrast)
+    // We simplify and use a pivot based on skew.
+    const float pivot = 0.18F * std::exp(skew * 5.0F); // Skew shifts the 18% gray point.
+    return 1.0F / (1.0F + std::pow(x / pivot, -contrast));
+}
+
 // ─────────────────────────────────────────────────────────────────────
 // Introspection
 // ─────────────────────────────────────────────────────────────────────
@@ -78,6 +90,10 @@ void ToneMappingStage::setParams(const StageParams& p) {
     }
 }
 
+StageParams ToneMappingStage::getParams() const {
+    return m_params;
+}
+
 // ─────────────────────────────────────────────────────────────────────
 // buildLUT1D
 // ─────────────────────────────────────────────────────────────────────
@@ -101,6 +117,9 @@ void ToneMappingStage::buildLUT1D() {
                 break;
             case ToneMappingParams::Operator::ACES:
                 mapped = acesHill(x, contrast);
+                break;
+            case ToneMappingParams::Operator::Sigmoid:
+                mapped = sigmoidCurve(x, contrast, m_params.sigmoidSkew);
                 break;
         }
         m_lut[i] = mapped;
@@ -170,12 +189,46 @@ ImageBuffer ToneMappingStage::processCPU(const ImageBuffer& in) {
     const float* src   = in.ptr();
     float*       dst   = out.ptr();
 
-    // ── Apply tone mapping via LUT ───────────────────────────────────
+    const auto normType = m_params.norm;
+
+    // ── Apply tone mapping ───────────────────────────────────────────
     for (size_t i = 0; i < px; ++i) {
         const size_t off = i * 3;
-        dst[off + 0] = applyLUT(src[off + 0]);
-        dst[off + 1] = applyLUT(src[off + 1]);
-        dst[off + 2] = applyLUT(src[off + 2]);
+        const float r = src[off + 0];
+        const float g = src[off + 1];
+        const float b = src[off + 2];
+
+        if (normType == ToneMappingParams::PreservationNorm::None) {
+            // Independent channels (standard behaviour).
+            dst[off + 0] = applyLUT(r);
+            dst[off + 1] = applyLUT(g);
+            dst[off + 2] = applyLUT(b);
+        } else {
+            // Chrominance preservation: compute a norm, map it, then scale RGB.
+            float normVal = 1.0F;
+            switch (normType) {
+                case ToneMappingParams::PreservationNorm::MaxRGB:
+                    normVal = std::max({r, g, b});
+                    break;
+                case ToneMappingParams::PreservationNorm::Luminance:
+                    normVal = 0.2126F * r + 0.7152F * g + 0.0722F * b;
+                    break;
+                case ToneMappingParams::PreservationNorm::PowerNorm:
+                    normVal = std::sqrt(r * r + g * g + b * b);
+                    break;
+                default: break;
+            }
+
+            if (normVal > 1e-6F) {
+                const float mappedNorm = applyLUT(normVal);
+                const float ratio      = mappedNorm / normVal;
+                dst[off + 0] = r * ratio;
+                dst[off + 1] = g * ratio;
+                dst[off + 2] = b * ratio;
+            } else {
+                dst[off + 0] = dst[off + 1] = dst[off + 2] = 0.0F;
+            }
+        }
     }
 
     // ── Post-tone-map saturation adjustment ──────────────────────────

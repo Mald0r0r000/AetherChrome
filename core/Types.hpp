@@ -98,6 +98,8 @@ struct CameraMetadata {
     WhitePoint                 shotWhitePoint;  ///< As-shot white balance.
     std::array<float, 9>       colorMatrix1{};  ///< Camera RGB → XYZ D50 (row-major 3×3).
     std::array<float, 9>       colorMatrix2{};  ///< Camera RGB → XYZ D65 (row-major 3×3).
+    float                      blackLevel{};    ///< Sensor black level (RAW normalization).
+    float                      whiteLevel{};    ///< Sensor saturation level (RAW normalization).
 };
 
 // ─────────────────────────────────────────────────────────────────────
@@ -116,11 +118,14 @@ struct RawIngestParams {
 
 /// @brief Parameters for the ColorMatrix stage.
 ///
-/// Controls illuminant blending and the camera-to-working-space
-/// colour matrix transformation.
+/// Controls the white balance (Temperature/Tint) and the 
+/// camera-to-working-space colour matrix transformation.
 struct ColorMatrixParams {
-    /// Illuminant blend factor [0, 1]: 0 = D50 (tungsten), 1 = D65 (daylight).
-    float illuminantBlend = 1.0F;
+    /// Color Temperature in Kelvin [2000, 12000].
+    float temperature = 5000.0F;
+
+    /// Tint (Green/Magenta shift) [-150, 150].
+    float tint = 0.0F;
 
     /// Camera RGB → XYZ D50 (row-major 3×3, from CameraMetadata::colorMatrix1).
     std::array<float, 9> cameraToXYZ_D50{};
@@ -130,6 +135,9 @@ struct ColorMatrixParams {
 
     /// Target working colour space.
     ColorSpace targetSpace = ColorSpace::PROPHOTO_LINEAR;
+
+    /// True to use camera white balance multipliers.
+    bool useCameraWB = true;
 };
 
 /// @brief Parameters for the Exposure stage.
@@ -147,12 +155,23 @@ struct ToneMappingParams {
         Linear  = 0,  ///< No tone mapping — pass-through.
         FilmicS = 1,  ///< Filmic S-curve (Hable / Uncharted 2).
         ACES    = 2,  ///< ACES RRT approximation (Stephen Hill).
+        Sigmoid = 3,  ///< Sigmoid curve (log-logistic).
     };
 
-    Operator op         = Operator::FilmicS;
-    float    contrast   = 1.0F;   ///< Curve contrast multiplier [0.5, 2.0].
-    float    saturation = 1.0F;   ///< Output saturation [0, 2].
-    float    whiteClip  = 1.0F;   ///< White clip point (scene linear).
+    /// Chrominance preservation norms.
+    enum class PreservationNorm : uint8_t {
+        None        = 0,  ///< Independent RGB channels.
+        MaxRGB      = 1,  ///< Preserve max(R,G,B).
+        Luminance   = 2,  ///< Preserve Rec.709 luminance.
+        PowerNorm   = 3,  ///< Preserve sqrt(R²+G²+B²).
+    };
+
+    Operator         op         = Operator::FilmicS;
+    PreservationNorm norm       = PreservationNorm::None;
+    float            contrast   = 1.0F;   ///< Curve contrast multiplier [0.5, 2.0].
+    float            saturation = 1.0F;   ///< Output saturation [0, 2].
+    float            whiteClip  = 1.0F;   ///< White clip point (scene linear).
+    float            sigmoidSkew = 0.0F;  ///< Sigmoid curve skew/offset [-0.5, 0.5].
 
     /// Bézier control points for a future custom curve (5 points in [0,1]²).
     std::array<std::array<float, 2>, 5> curvePoints = {{
